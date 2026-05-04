@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Permit Expiry Tracker</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <!-- Front End-->
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --bg: #F5F4F0;
+      --surface: #FFFFFF;
+      --surface-2: #F0EFE9;
+      --border: #E2E0D8;
+      --border-dark: #C8C6BC;
+      --text: #1A1A18;
+      --text-muted: #7A7970;
+      --text-faint: #AEADA5;
+
+      --green-bg: #EAF3DE;
+      --green-border: #B4D880;
+      --green-text: #2E5A0E;
+
+      --amber-bg: #FEF3D8;
+      --amber-border: #F5CC6A;
+      --amber-text: #7A4E08;
+
+      --red-bg: #FDECEA;
+      --red-border: #F5A8A4;
+      --red-text: #8B1F1C;
+
+      --gray-bg: #EEEDE8;
+      --gray-border: #D0CFC8;
+      --gray-text: #7A7970;
+
+      --accent: #2B5CE6;
+      --accent-light: #EBF0FD;
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      max-width: 1100px;
+      margin: 0 auto 2rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .page-header h1 {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+
+    .page-header p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-dark);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.12s, box-shadow 0.12s;
+      white-space: nowrap;
+    }
+
+    .btn:hover {
+      background: var(--surface-2);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    .btn-primary:hover {
+      background: #1E4BD4;
+    }
+
+    .btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    /* ── SUMMARY CARDS ── */
+    .summary {
+      max-width: 1100px;
+      margin: 0 auto 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 14px 18px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+
+    .stat-value.green {
+      color: var(--green-text);
+    }
+
+    .stat-value.amber {
+      color: var(--amber-text);
+    }
+
+    .stat-value.red {
+      color: var(--red-text);
+    }
+
+    /* ── TABLE CARD ── */
+    .table-card {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      overflow: hidden;
+    }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-wrap {
+      position: relative;
+      flex: 1;
+      max-width: 300px;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 14px;
+      height: 14px;
+      color: var(--text-faint);
+      pointer-events: none;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      padding: 7px 12px 7px 32px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      border: 1px solid var(--border-dark);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+
+    .search-wrap input::placeholder {
+      color: var(--text-faint);
+    }
+
+    /* ── TABLE ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    thead th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+
+    thead th.sortable {
+      cursor: pointer;
+    }
+
+    thead th.sortable:hover {
+      color: var(--text);
+    }
+
+    thead th .sort-icon {
+      display: inline-block;
+      margin-left: 4px;
+      opacity: 0.4;
+      font-size: 10px;
+    }
+
+    thead th.sort-asc .sort-icon::after {
+      content: '↑';
+      opacity: 1;
+    }
+
+    thead th.sort-desc .sort-icon::after {
+      content: '↓';
+      opacity: 1;
+    }
+
+    thead th:not(.sort-asc):not(.sort-desc) .sort-icon::after {
+      content: '↕';
+    }
+
+    th:nth-child(1) {
+      width: 22%;
+    }
+
+    th:nth-child(2) {
+      width: 22%;
+    }
+
+    th:nth-child(3) {
+      width: 16%;
+    }
+
+    th:nth-child(4) {
+      width: 30%;
+    }
+
+    th:nth-child(5) {
+      width: 10%;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.08s;
+    }
+
+    tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: #FAFAF7;
+    }
+
+    td {
+      padding: 10px 16px;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    /* Inline edit inputs */
+    td input[type="text"],
+    td input[type="date"] {
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-bottom: 1.5px solid transparent;
+      outline: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      padding: 2px 0;
+      transition: border-color 0.12s;
+    }
+
+    td input[type="text"]:focus,
+    td input[type="date"]:focus {
+      border-bottom-color: var(--accent);
+      background: var(--accent-light);
+      border-radius: 2px;
+      padding: 2px 4px;
+    }
+
+    td input::placeholder {
+      color: var(--text-faint);
+      font-style: italic;
+    }
+
+    td input[type="date"] {
+      cursor: pointer;
+    }
+
+    td input[type="date"]::-webkit-calendar-picker-indicator {
+      opacity: 0.4;
+      cursor: pointer;
+    }
+
+    /* ── BADGE ── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 500;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .badge-green {
+      background: var(--green-bg);
+      border-color: var(--green-border);
+      color: var(--green-text);
+    }
+
+    .badge-amber {
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+      color: var(--amber-text);
+    }
+
+    .badge-red {
+      background: var(--red-bg);
+      border-color: var(--red-border);
+      color: var(--red-text);
+    }
+
+    .badge-gray {
+      background: var(--gray-bg);
+      border-color: var(--gray-border);
+      color: var(--gray-text);
+    }
+
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .badge-green .badge-dot {
+      background: #4E9A1A;
+    }
+
+    .badge-amber .badge-dot {
+      background: #C98A10;
+    }
+
+    .badge-red .badge-dot {
+      background: #D63B37;
+    }
+
+    .badge-gray .badge-dot {
+      background: var(--text-faint);
+    }
+
+    /* ── DELETE BUTTON ── */
+    .del-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-faint);
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: background 0.1s, color 0.1s;
+    }
+
+    .del-btn:hover {
+      background: var(--red-bg);
+      color: var(--red-text);
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      width: 40px;
+      height: 40px;
+      margin-bottom: 12px;
+      opacity: 0.25;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    /* ── FOOTER / LEGEND ── */
+    .legend {
+      max-width: 1100px;
+      margin: 1rem auto 0;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--text);
+      color: #fff;
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 700px) {
+      .summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      th:nth-child(1),
+      th:nth-child(2) {
+        width: 30%;
+      }
+
+      th:nth-child(3) {
+        width: 20%;
+      }
+
+      th:nth-child(4) {
+        width: 20%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <h1>Permit Tracker</h1>
+      <p>Monitor and manage powerplant permit validity in real time</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" onclick="exportCSV()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 12h10M8 2v7m0 0L5.5 6.5M8 9l2.5-2.5" />
+        </svg>
+        Export CSV
+      </button>
+      <button class="btn btn-primary" onclick="addRow()">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3v10M3 8h10" />
+        </svg>
+        Add Permit
+      </button>
+    </div>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="summary">
+    <div class="stat-card">
+      <div class="stat-label">Total Permits</div>
+      <div class="stat-value" id="s-total">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Safe (6+ months)</div>
+      <div class="stat-value green" id="s-green">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Expiring (3–6 mo.)</div>
+      <div class="stat-value amber" id="s-amber">0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Critical/Expired</div>
+      <div class="stat-value red" id="s-red">0</div>
+    </div>
+  </div>
+
+  <!-- TABLE CARD -->
+  <div class="table-card">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="M10.5 10.5L13 13" />
+        </svg>
+        <input type="text" id="search-input" placeholder="Search permits..." oninput="renderTable()" />
+      </div>
+      <span style="font-size:12px; color:var(--text-muted);" id="row-count"></span>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="sortable" onclick="sortBy('plant')" id="th-plant">
+            Powerplant Name <span class="sort-icon"></span>
+          </th>
+          <th class="sortable" onclick="sortBy('permit')" id="th-permit">
+            Permit <span class="sort-icon"></span>
+          </th>
+          <th class="sortable" onclick="sortBy('expiry')" id="th-expiry">
+            Expiry Date <span class="sort-icon"></span>
+          </th>
+          <th>Remarks</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="empty-state" id="empty-state" style="display:none;">
+      <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="6" y="4" width="28" height="32" rx="3" />
+        <path d="M13 14h14M13 20h14M13 26h8" />
+      </svg>
+      <p>No permits yet — click <strong>Add Permit</strong> to get started.</p>
+    </div>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:#4E9A1A;"></span> 6+ months remaining</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#C98A10;"></span> 3–6 months remaining</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#D63B37;"></span> Under 3 months / expired</div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const STORAGE_KEY = 'permit_tracker_v1';
+    let rows = []; //rows of input
+    let nextId = 1; //for generating unique IDs for rows
+    let sortDir = 'asc';
+    let sortField = 'expiry';
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY); //get saved data from localStorage
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          rows = parsed.rows || [];
+          nextId = parsed.nextId || 1;
+        }
+      }
+      catch (e) {
+        console.error('Error loading data from localStorage:', e);
+      }
+    }
+
+    function saveData() {
+      try {
+        const data = { rows, nextId };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); //save current data to local
+      } catch (e) {
+        console.error('Error saving data to localStorage:', e);
+
+      }
+    }
+
+    function addRow() {
+      rows.push({ id: nextId++, plant: '', permit: '', expiry: '' }); //add new row with unique ID & blank fields
+      saveData();
+      renderTable();
+
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('#tbody tr:last-child input');
+        if (inputs[0]) inputs[0].focus(); //focus first input of new row
+      }, 50);
+    }
+
+    function deleteRow(id) {
+      rows = rows.filter(r => r.id !== id); //remove row with matching ID
+      saveData();
+      renderTable();
+      showToast('Permit removed');
+    }
+
+    function updateField(id, field, value) {
+      const row = rows.find(r => r.id === id);
+      if (row) {
+        row[field] = value; //update specific field of the row
+        saveData();
+        renderTable();
+      }
+    }
+
+    // Business Logic
+    function getMonthsDiff(expiryDateStr) {
+      if (!expiryDateStr) return null;
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); //normalize to start of day
+      const exp = new Date(expiryDateStr);
+      return (exp - now) / (1000 * 60 * 60 * 24 * 30.4375); //convert ms to months
+    }
+
+    function getStatus(months) {
+      if (months == null) return 'gray';
+      if (months < 0) return 'red';
+      if (months < 3) return 'red';
+      if (months < 6) return 'amber';
+      return 'green';
+    }
+
+    function getRemarks(months) {
+      if (months == null) return 'Set a date';
+
+      const totalDays = Math.round(Math.abs(months) * 30.4375); //total days until/since expiry
+
+      if (months < 0) {
+        return `Expired ${totalDays} day${totalDays !== 1 ? 's' : ''} ago`;
+      }
+
+      const m = Math.floor(months);
+      const d = totalDays - (m * 30);
+
+      if (m === 0) return `Expiring in ${totalDays} day${totalDays !== 1 ? 's' : ''}`;
+      if (d <= 0) return `Expiring in ${m} month${m !== 1 ? 's' : ''}`;
+      return `Expiring in ${m} mo. ${d} day${d !== 1 ? 's' : ''}`;
+    }
+
+    function getStatusMeta(status) {
+      return {
+        green: { label: 'Safe', code: '[GREEN]' },
+        amber: { label: 'Expiring Soon', code: '[ORANGE]' },
+        red: { label: 'Critical/Expired', code: '[RED]' },
+        gray: { label: 'No Date', code: '[GRAY]' }
+      }[status] || { label: 'No Date', code: '[GRAY]' };
+    }
+
+    // Sorting & Filtering
+    function sortBy(field) {
+      if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc'; //flip direction if same field
+      } else {
+        sortField = field;
+        sortDir = 'asc';
+      }
+      renderTable();
+    }
+
+    function getSortedRows(data) {
+      return [...data].sort((a, b) => {
+        //Sorted fields
+        let av = a[sortField] || '';
+        let bv = b[sortField] || '';
+
+        // Sort by date
+        if (sortField === 'expiry') {
+          av = av ? new Date(av).getTime() : Infinity;
+          bv = bv ? new Date(bv).getTime() : Infinity;
+          return sortDir === 'asc' ? av - bv : bv - av;
+        }
+
+        // Sort by name
+        return sortDir === 'asc'
+          ? av.localeCompare(bv)
+          : bv.localeCompare(av);
+      });
+    }
+
+    function updateSortHeaders() {
+      ['plant', 'permit', 'expiry'].forEach(f => {
+        const th = document.getElementById('th-' + f);
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (sortField === f) th.classList.add('sort-' + sortDir);
+      });
+    }
+
+    // Render
+    function renderTable() {
+      // search algorithm - filter rows based on search query matching plant or permit fields
+      const query = (document.getElementById('search-input').value || '').toLowerCase();
+      let filtered = rows.filter(r => !query ||
+        (r.plant || '').toLowerCase().includes(query) ||
+        (r.permit || '').toLowerCase().includes(query)
+      )
+
+      const sorted = getSortedRows(filtered); //sort filtered results
+
+      const tbody = document.getElementById('tbody');
+      const emptyState = document.getElementById('empty-state');
+
+      // no permit message if table is empty
+      emptyState.style.display = rows.length === 0 ? 'block' : 'none';
+
+      tbody.innerHTML = '';
+
+      let counts = { green: 0, amber: 0, red: 0 }; //counters for summary cards
+      rows.forEach(r => {
+        const s = getStatus(getMonthsDiff(r.expiry));
+        if (s !== 'gray') counts[s]++;
+      })
+
+      // Build each row
+      sorted.forEach(row => {
+        const months = getMonthsDiff(row.expiry);
+        const status = getStatus(months);
+        const remarks = getRemarks(months);
+
+        const tr = document.createElement('tr');
+        tr.dataset.id = row.id;
+
+        tr.innerHTML = `
+          <td>
+            <input type="text" placeholder="e.g. Marinduque Powerplant" 
+            value="${esc(row.plant)}" 
+            onchange="updateField(${row.id}, 'plant', this.value)" />
+          </td>
+          <td>
+            <input type="text" placeholder="e.g. Permit to Operate"
+            value="${esc(row.permit)}"
+            onchange="updateField(${row.id}, 'permit', this.value)" />
+          </td>
+          <td>
+            <input type="date"
+            value="${esc(row.expiry)}"
+            onchange="updateField(${row.id}, 'expiry', this.value)" />
+          </td>
+          <td>
+            <span class="badge badge-${status}">
+              <span class="badge-dot"></span>
+              ${remarks}
+            </span>
+          </td>
+          <td>
+            <button class="del-btn" onclick="deleteRow(${row.id})" title="Remove permit">×</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('s-total').textContent = rows.length;
+      document.getElementById('s-green').textContent = counts.green;
+      document.getElementById('s-amber').textContent = counts.amber;
+      document.getElementById('s-red').textContent = counts.red;
+
+      document.getElementById('row-count').textContent =
+        query ? `${sorted.length} of ${rows.length} permit${rows.length !== 1 ? 's' : ''}` :
+          `${rows.length} permit${rows.length !== 1 ? 's' : ''}`;
+
+      updateSortHeaders();
+    }
+
+    function exportCSV() {
+      if (rows.length === 0) { showToast('Nothing to export'); return; }
+
+      const headers = ['Powerplant Name', 'Permit', 'Expiry Date', 'Remarks', 'Status'];
+      const csvRows = rows.map(r => {
+        const months = getMonthsDiff(r.expiry);
+        const remarks = getRemarks(months);
+        const status = getStatus(months);
+        const statusMeta = getStatusMeta(status);
+        const remarksWithCode = `${statusMeta.code} ${remarks}`;
+        return [r.plant, r.permit, r.expiry, remarksWithCode, statusMeta.label]
+          .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',');
+      });
+
+      const csv = [headers.join(','), ...csvRows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `permits_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('CSV exported');
+    }
+
+    // utility
+    function esc(str) {
+      return (str || '').replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2200);
+    }
+
+    // init
+    loadData();
+    if (rows.length === 0) addRow(); //start with one blank row if no data
+    else renderTable();
+  </script>
+
+</body>
+
+</html>
