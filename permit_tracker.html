@@ -64,7 +64,7 @@
 
     /* ── PAGE HEADER ── */
     .page-header {
-      max-width: 1100px;
+      max-width: 100%;
       margin: 0 auto 2rem;
       display: flex;
       align-items: flex-end;
@@ -137,7 +137,7 @@
 
     /* ── SUMMARY CARDS ── */
     .summary {
-      max-width: 1100px;
+      max-width: 100%;
       margin: 0 auto 1.5rem;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -182,7 +182,7 @@
 
     /* ── TABLE CARD ── */
     .table-card {
-      max-width: 1100px;
+      max-width: 100%;
       margin: 0 auto;
       background: var(--surface);
       border: 1px solid var(--border);
@@ -248,7 +248,7 @@
     }
 
     thead th {
-      padding: 10px 16px;
+      padding: 6px 16px;
       text-align: left;
       font-size: 11px;
       font-weight: 500;
@@ -289,24 +289,59 @@
       content: '↕';
     }
 
+    /* Powerplant name  */
     th:nth-child(1) {
-      width: 22%;
+      width: 10%;
     }
 
+    /*Environmetal Law  */
     th:nth-child(2) {
-      width: 22%;
+      width: 12%;
     }
 
+    /* Description  */
     th:nth-child(3) {
-      width: 16%;
+      width: 12%;
     }
 
+    /* Permit */
     th:nth-child(4) {
-      width: 30%;
+      width: 10%;
     }
 
+    /* Unit / Coverage */
     th:nth-child(5) {
       width: 10%;
+    }
+
+    /* Permit No. */
+    th:nth-child(6) {
+      width: 9%;
+    }
+
+    /* Date Issued */
+    th:nth-child(7) {
+      width: 8%;
+    }
+
+    /* Expiry Date */
+    th:nth-child(8) {
+      width: 8%;
+    }
+
+    /* Status */
+    th:nth-child(9) {
+      width: 8%;
+    }
+
+    /* Remarks */
+    th:nth-child(10) {
+      width: 8%;
+    }
+
+    /* Delete Button */
+    th:nth-child(11) {
+      width: 4%;
     }
 
     tbody tr {
@@ -326,11 +361,13 @@
       padding: 10px 16px;
       font-size: 14px;
       vertical-align: middle;
+      text-align: left;
     }
 
     /* Inline edit inputs */
     td input[type="text"],
-    td input[type="date"] {
+    td input[type="date"],
+    td textarea {
       width: 100%;
       background: transparent;
       border: none;
@@ -343,8 +380,16 @@
       transition: border-color 0.12s;
     }
 
+    td textarea {
+      resize: vertical;
+      min-height: 60px;
+      white-space: pre-wrap;
+      overflow-wrap: break-word;
+    }
+
     td input[type="text"]:focus,
-    td input[type="date"]:focus {
+    td input[type="date"]:focus,
+    td textarea:focus {
       border-bottom-color: var(--accent);
       background: var(--accent-light);
       border-radius: 2px;
@@ -466,7 +511,7 @@
 
     /* ── FOOTER / LEGEND ── */
     .legend {
-      max-width: 1100px;
+      max-width: 100%;
       margin: 1rem auto 0;
       display: flex;
       gap: 20px;
@@ -599,12 +644,28 @@
           <th class="sortable" onclick="sortBy('plant')" id="th-plant">
             Powerplant Name <span class="sort-icon"></span>
           </th>
+          <th class="sortable empty-state" onclick="sortBy('environmental_law')" id="th-environmental_law">
+            Environmental Law <span class="sort-icon"></span>
+          </th>
+          <th class="empty-state" id="th-description">
+            Description
+          </th>
           <th class="sortable" onclick="sortBy('permit')" id="th-permit">
             Permit <span class="sort-icon"></span>
+          </th>
+          <th class="empty-state" id="th-unit/coverage">
+            Unit / Coverage
+          </th>
+          <th class="empty-state" id="th-permit-no">
+            Permit No.
+          </th>
+          <th class="sortable" onclick="sortBy('date_issued')" id="th-date_issued">
+            Date Issued <span class="sort-icon"></span>
           </th>
           <th class="sortable" onclick="sortBy('expiry')" id="th-expiry">
             Expiry Date <span class="sort-icon"></span>
           </th>
+          <th>Status</th>
           <th>Remarks</th>
           <th></th>
         </tr>
@@ -662,7 +723,19 @@
     }
 
     function addRow() {
-      rows.push({ id: nextId++, plant: '', permit: '', expiry: '' }); //add new row with unique ID & blank fields
+      // Keep row shape consistent with the UI + export expectations
+      rows.push({
+        id: nextId++,
+        plant: '',
+        environmental_law: '',
+        description: '',
+        permit: '',
+        unit_coverage: '',
+        permit_no: '',
+        date_issued: '',
+        expiry: '',
+        remarks: ''
+      }); //add new row with unique ID & blank fields
       saveData();
       renderTable();
 
@@ -684,7 +757,17 @@
       if (row) {
         row[field] = value; //update specific field of the row
         saveData();
-        renderTable();
+
+        // Avoid clobbering active edits (e.g. remarks textarea) by re-rendering
+        // the whole table on every field change. Only re-render when derived UI
+        // (status/auto-remarks) or ordering/search could change.
+        const shouldRerender =
+          field === 'expiry' ||
+          field === sortField ||
+          field === 'plant' ||
+          field === 'permit';
+
+        if (shouldRerender) renderTable();
       }
     }
 
@@ -694,6 +777,7 @@
       const now = new Date();
       now.setHours(0, 0, 0, 0); //normalize to start of day
       const exp = new Date(expiryDateStr);
+
       return (exp - now) / (1000 * 60 * 60 * 24 * 30.4375); //convert ms to months
     }
 
@@ -749,7 +833,7 @@
         let bv = b[sortField] || '';
 
         // Sort by date
-        if (sortField === 'expiry') {
+        if (sortField === 'expiry' || sortField === 'date_issued') {
           av = av ? new Date(av).getTime() : Infinity;
           bv = bv ? new Date(bv).getTime() : Infinity;
           return sortDir === 'asc' ? av - bv : bv - av;
@@ -763,7 +847,7 @@
     }
 
     function updateSortHeaders() {
-      ['plant', 'permit', 'expiry'].forEach(f => {
+      ['plant', 'environmental_law', 'permit', 'date_issued', 'expiry'].forEach(f => {
         const th = document.getElementById('th-' + f);
         th.classList.remove('sort-asc', 'sort-desc');
         if (sortField === f) th.classList.add('sort-' + sortDir);
@@ -799,21 +883,46 @@
       sorted.forEach(row => {
         const months = getMonthsDiff(row.expiry);
         const status = getStatus(months);
-        const remarks = getRemarks(months);
+        const autoRemarks = getRemarks(months);
+        const remarksText = Object.prototype.hasOwnProperty.call(row, 'remarks')
+          ? (row.remarks ?? '')
+          : autoRemarks;
 
         const tr = document.createElement('tr');
         tr.dataset.id = row.id;
 
         tr.innerHTML = `
           <td>
-            <input type="text" placeholder="e.g. Marinduque Powerplant" 
+            <input type="text" placeholder="Marinduque Powerplant" 
             value="${esc(row.plant)}" 
-            onchange="updateField(${row.id}, 'plant', this.value)" />
+            onchange="updateField(${row.id},'plant', this.value)" />
           </td>
           <td>
-            <input type="text" placeholder="e.g. Permit to Operate"
+            <textarea placeholder="Philippine Clean Air Act of 2004"
+            onchange="updateField(${row.id},'environmental_law', this.value)">${esc(row.environmental_law)}</textarea>
+          </td>
+          <td>
+            <textarea placeholder="WasteWater Discharge Permit (DP)"
+            onchange="updateField(${row.id},'description', this.value)">${esc(row.description)}</textarea>
+          </td>
+          <td>
+            <input type="text" placeholder="Permit to Operate"
             value="${esc(row.permit)}"
-            onchange="updateField(${row.id}, 'permit', this.value)" />
+            onchange="updateField(${row.id},'permit', this.value)" />
+          </td>
+          <td>
+            <textarea placeholder="Oil Water Separator"
+            onchange="updateField(${row.id},'unit_coverage', this.value)">${esc(row.unit_coverage)}</textarea>
+          </td>
+          <td>
+            <input type="text" placeholder="XX-123-45-67890"
+            value="${esc(row.permit_no)}"
+            onchange="updateField(${row.id},'permit_no', this.value)" />
+          </td>
+          <td>
+            <input type="date"
+            value="${esc(row.date_issued)}"
+            onchange="updateField(${row.id},'date_issued', this.value)" />
           </td>
           <td>
             <input type="date"
@@ -823,8 +932,12 @@
           <td>
             <span class="badge badge-${status}">
               <span class="badge-dot"></span>
-              ${remarks}
+              ${getStatusMeta(status).label}
             </span>
+          </td>
+          <td>
+            <textarea placeholder="Remarks"
+            onchange="updateField(${row.id}, 'remarks', this.value)">${esc(remarksText)}</textarea>
           </td>
           <td>
             <button class="del-btn" onclick="deleteRow(${row.id})" title="Remove permit">×</button>
@@ -848,14 +961,17 @@
     function exportCSV() {
       if (rows.length === 0) { showToast('Nothing to export'); return; }
 
-      const headers = ['Powerplant Name', 'Permit', 'Expiry Date', 'Remarks', 'Status'];
+      const headers = ['Powerplant Name', 'Environmental Law', 'Description', 'Permit', 'Unit / Coverage', 'Permit no.', 'Date Issued', 'Expiry Date', 'Status', 'Remarks'];
       const csvRows = rows.map(r => {
         const months = getMonthsDiff(r.expiry);
-        const remarks = getRemarks(months);
+        const autoRemarks = getRemarks(months);
+        const remarks = Object.prototype.hasOwnProperty.call(r, 'remarks')
+          ? (r.remarks ?? '')
+          : autoRemarks;
         const status = getStatus(months);
         const statusMeta = getStatusMeta(status);
         const remarksWithCode = `${statusMeta.code} ${remarks}`;
-        return [r.plant, r.permit, r.expiry, remarksWithCode, statusMeta.label]
+        return [r.plant, r.environmental_law, r.description, r.permit, r.unit_coverage, r.permit_no, r.date_issued, r.expiry, statusMeta.label, remarksWithCode]
           .map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',');
       });
 
