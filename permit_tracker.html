@@ -705,6 +705,16 @@
           const parsed = JSON.parse(saved);
           rows = parsed.rows || [];
           nextId = parsed.nextId || 1;
+
+          // Backfill new per-row flags/fields for existing localStorage data
+          rows.forEach(r => {
+            if (r.remarksAuto === undefined) {
+              // If remarks are empty/missing, treat it as "auto" until user edits.
+              // If remarks already has content, assume the user manually set it.
+              const remarksStr = (r.remarks ?? '');
+              r.remarksAuto = (String(remarksStr).trim() === '') ? true : false;
+            }
+          });
         }
       }
       catch (e) {
@@ -734,7 +744,8 @@
         permit_no: '',
         date_issued: '',
         expiry: '',
-        remarks: ''
+        remarks: '',
+        remarksAuto: true // auto-fill remarks when expiry is first set; stop auto-fill after user edits
       }); //add new row with unique ID & blank fields
       saveData();
       renderTable();
@@ -755,7 +766,28 @@
     function updateField(id, field, value) {
       const row = rows.find(r => r.id === id);
       if (row) {
-        row[field] = value; //update specific field of the row
+        // Remarks: user edits should override auto-fill permanently for that row
+        if (field === 'remarks') {
+          row.remarks = value;
+          row.remarksAuto = false;
+        } else {
+          row[field] = value; //update specific field of the row
+
+          // When expiry is first set, auto-fill remarks; keep auto-fill only if user hasn't overridden it.
+          if (field === 'expiry') {
+            if (value) {
+              if (row.remarksAuto !== false) {
+                row.remarksAuto = true;
+                row.remarks = getRemarks(getMonthsDiff(value));
+              }
+            } else {
+              // If expiry is cleared, reset to auto mode.
+              row.remarksAuto = true;
+              row.remarks = '';
+            }
+          }
+        }
+
         saveData();
 
         // Avoid clobbering active edits (e.g. remarks textarea) by re-rendering
@@ -884,9 +916,8 @@
         const months = getMonthsDiff(row.expiry);
         const status = getStatus(months);
         const autoRemarks = getRemarks(months);
-        const remarksText = Object.prototype.hasOwnProperty.call(row, 'remarks')
-          ? (row.remarks ?? '')
-          : autoRemarks;
+        // If the user has overridden remarks, show their text; otherwise show the auto text.
+        const remarksText = (row.remarksAuto === false) ? (row.remarks ?? '') : autoRemarks;
 
         const tr = document.createElement('tr');
         tr.dataset.id = row.id;
@@ -965,9 +996,7 @@
       const csvRows = rows.map(r => {
         const months = getMonthsDiff(r.expiry);
         const autoRemarks = getRemarks(months);
-        const remarks = Object.prototype.hasOwnProperty.call(r, 'remarks')
-          ? (r.remarks ?? '')
-          : autoRemarks;
+        const remarks = (r.remarksAuto === false) ? (r.remarks ?? '') : autoRemarks;
         const status = getStatus(months);
         const statusMeta = getStatusMeta(status);
         const remarksWithCode = `${statusMeta.code} ${remarks}`;
